@@ -1,18 +1,18 @@
 {
-  "name": "biamp-audia",
+  "name": "biamp-tesira",
   "version": "1.0.0",
 	"api_version": "1.0.0",
 	"support": { "action": true, "feedback": false, "preset": false },
-	"shortname": "audia",
+	"shortname": "tesira",
 	"keywords": [ "Audio DSP" ],
-	"homepage": "https://www.biamp.com/products/audia",
+	"homepage": "https://www.biamp.com/products/tesira",
 	"manufacturer": "Biamp",
 	"product": "Audia Familiy",
-  "description": "Module to control Biamp Audia DSP platforms",
+  "description": "Module to control Biamp Tesira DSP platforms",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "Zach Strauss <zach@strauss.audio>",
+  "author": "Adrian Davis <themusicnerd@gmail.com>",
   "license": "MIT"
 }
