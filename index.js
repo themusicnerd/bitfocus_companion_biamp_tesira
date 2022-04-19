@@ -1,8 +1,14 @@
+// ---------------------------------------------------------
+// Based on the audia module with mostly basic modifications to get it cranking on the Tesira range
+// ---------------------------------------------------------
+
 var tcp = require('../../tcp');
 var instance_skel = require('../../instance_skel');
 var debug;
 var log;
 
+
+// All the setup stuff goes here
 function instance(system, id, config) {
 	var self = this;
 
@@ -31,6 +37,8 @@ instance.prototype.init = function() {
 
 	self.init_tcp();
 };
+
+// All the TCP communication stuff startup goes next
 
 instance.prototype.init_tcp = function() {
 	var self = this;
@@ -63,7 +71,7 @@ instance.prototype.init_tcp = function() {
 };
 
 
-// Return config fields for web config
+// Return config fields for web config - This stuff is for the module EDIT config page in companion
 instance.prototype.config_fields = function () {
 	var self = this;
 	return [
@@ -85,7 +93,7 @@ instance.prototype.config_fields = function () {
 	]
 };
 
-// When module gets deleted
+// Do this when the module gets deleted
 instance.prototype.destroy = function() {
 	var self = this;
 
@@ -96,34 +104,42 @@ instance.prototype.destroy = function() {
 	debug("destroy", self.id);;
 };
 
+// These are the options that the end-user can select when creating buttons and automations
 
 instance.prototype.actions = function(system) {
 	var self = this;
 
 	self.system.emit('instance_actions', self.id, {
-		'recall':    {
+		
+		// Preset Recall
+		'recall-preset:    {
 			label: 'Recall a preset',
 			options: [
 				{
+					type: 'dropdown',
+					label: 'Direction',
+					id: 'action',
+					choices: [ 
+						{ id: 'recallPreset', label: 'Recall By ID (1001 or higher)' }, 
+						{ id: 'recallPresetByName', label: 'Recall By Name' } 
+					]
+				},
+				{
 					type: 'textinput',
-					label: 'Preset Number',
+					label: 'Preset Name or ID',
 					id:   'value',
 					regex: self.REGEX_NUMBER
 				}
 			]
 		},
+		
+		// Fader Control - inc dec
 		'fader-step': {
 			label: '[Fader] Increment/Decrement',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -138,8 +154,8 @@ instance.prototype.actions = function(system) {
 					label: 'Direction',
 					id: 'action',
 					choices: [ 
-						{ id: 'INC', label: 'Increment' }, 
-						{ id: 'DEC', label: 'Decrement' } 
+						{ id: 'increment', label: 'Increment' }, 
+						{ id: 'decrement', label: 'Decrement' } 
 					]
 				},
 				{
@@ -150,18 +166,14 @@ instance.prototype.actions = function(system) {
 				}
 			]
 		},
+		
+		// Fader Control - set the level value directly
 		'fader-set': {
-			label: '[Fader] Set',
+			label: '[Fader] set',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -180,18 +192,14 @@ instance.prototype.actions = function(system) {
 				}
 			]
 		},
+		
+		// fader mute
 		'fadermute-set': {
-			label: '[Fader] Set Mute',
+			label: '[Fader] set Mute',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -207,24 +215,20 @@ instance.prototype.actions = function(system) {
 					label: 'State',
 					id: 'value',
 					choices: [ 
-						{ id: '0', label: 'Unmuted' }, 
-						{ id: '1', label: 'Muted' } 
+						{ id: 'false', label: 'Unmuted' }, 
+						{ id: 'true', label: 'Muted' } 
 					]
 				},
 			]
 		},
+		
+		// mute in blocks that support mute 
 		'mutebutton-set': {
-			label: '[Mute Button] Set Mute',
+			label: '[Mute] set Mute',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -240,91 +244,64 @@ instance.prototype.actions = function(system) {
 					label: 'State',
 					id: 'value',
 					choices: [ 
-						{ id: '0', label: 'Unmuted' }, 
-						{ id: '1', label: 'Muted' } 
+						{ id: 'false', label: 'Unmuted' }, 
+						{ id: 'true', label: 'Muted' } 
 					]
 				},
 			]
 		},
+		
+		// Router set output to input
 		'router-set': {
-			label: '[Router] Set Crosspoint',
+			label: '[Router] set Crosspoint',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
+					label: 'Instance Tag',
+					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
 				{
 					type: 'textinput',
-					label: 'Instance ID',
-					id: 'instance',
+					label: 'Output',
+					id: 'index1',
 					regex: self.REGEX_NUMBER
 				},
 				{
 					type: 'textinput',
 					label: 'Input',
-					id: 'index1',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Output',
 					id: 'index2',
 					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'dropdown',
-					label: 'State',
-					id: 'value',
-					choices: [ 
-						{ id: '0', label: 'Unmuted' }, 
-						{ id: '1', label: 'Muted' } 
-					]
 				},
 			]
 		},
+		
+		// Source Block Select
 		'source-set': {
-			label: '[Source Selection] Set Source',
+			label: '[Source Selection] set Source',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Output',
-					id: 'index2',
 					regex: self.REGEX_NUMBER
 				},
 				{
 					type: 'textinput',
 					label: 'Source',
-					id: 'value',
+					id: 'index1',
 					regex: self.REGEX_NUMBER
 				}
 			]
 		},
+		
+		// Source Volume Set (per input)
 		'sourcevolume-set': {
-			label: '[Source Selection] Set Input Volume',
+			label: '[Source Selection] set Input Volume',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -342,18 +319,14 @@ instance.prototype.actions = function(system) {
 				}
 			]
 		},
+		
+		// Leveler/Compressor/Peak Limiter/Ducker/Noise Gate/AGC Bypass
 		'leveler-set': {
-			label: '[Leveler] Set Bypass',
+			label: 'Leveler/Compressor/Peak Limiter/Ducker/Noise Gate/AGC set Bypass',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -362,76 +335,20 @@ instance.prototype.actions = function(system) {
 					label: 'State',
 					id: 'value',
 					choices: [ 
-						{ id: '0', label: 'Active' }, 
-						{ id: '1', label: 'Bypassed' } 
+						{ id: 'false', label: 'Active' }, 
+						{ id: 'true', label: 'Bypassed' } 
 					]
 				}
 			]
 		},
-		'comp-set': {
-			label: '[Comp/Limiter] Set Bypass',
+		
+		// input level set for all blocks
+		'inputlevel-set': {
+			label: 'Input Level',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
-					id: 'instance',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'dropdown',
-					label: 'State',
-					id: 'value',
-					choices: [ 
-						{ id: '0', label: 'Active' }, 
-						{ id: '1', label: 'Bypassed' } 
-					]
-				}
-			]
-		},
-		'noise-set': {
-			label: '[Noise Gate] Set Bypass',
-			options: [
-				{
-					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
-					id: 'instance',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'dropdown',
-					label: 'State',
-					id: 'value',
-					choices: [ 
-						{ id: '0', label: 'Active' }, 
-						{ id: '1', label: 'Bypassed' } 
-					]
-				}
-			]
-		},
-		'duckerinputlevel-set': {
-			label: '[Ducker] Set Input Level',
-			options: [
-				{
-					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -442,18 +359,14 @@ instance.prototype.actions = function(system) {
 				}
 			]
 		},
+		
+		// level sence set - for dynamics processor - ducker
 		'duckerlevelsense-set': {
-			label: '[Ducker] Set Level Sense',
+			label: '[Ducker] set Level Sense',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -464,44 +377,14 @@ instance.prototype.actions = function(system) {
 				}
 			]
 		},
-		'duckerbypass-set': {
-			label: '[Ducker] Set Bypass',
-			options: [
-				{
-					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
-					id: 'instance',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'dropdown',
-					label: 'State',
-					id: 'value',
-					choices: [ 
-						{ id: '0', label: 'Active' }, 
-						{ id: '1', label: 'Bypassed' } 
-					]
-				}
-			]
-		},
+		
+		// MUTE - set ducker sence mute
 		'duckersensemute-set': {
-			label: '[Ducker] Set Sense Mute',
+			label: '[Ducker] set Sense Mute',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -510,24 +393,20 @@ instance.prototype.actions = function(system) {
 					label: 'State',
 					id: 'value',
 					choices: [ 
-						{ id: '0', label: 'Unmuted' }, 
-						{ id: '1', label: 'Muted' } 
+						{ id: 'false', label: 'Unmuted' }, 
+						{ id: 'true', label: 'Muted' } 
 					]
 				}
 			]
 		},
-		'duckerinputmute-set': {
-			label: '[Ducker] Set Input Mute',
+		
+		// MUTE - set input mute		
+		'inputmute-set': {
+			label: '[Input] set Mute',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -536,24 +415,23 @@ instance.prototype.actions = function(system) {
 					label: 'State',
 					id: 'value',
 					choices: [ 
-						{ id: '0', label: 'Unmuted' }, 
-						{ id: '1', label: 'Muted' } 
+						{ id: 'false', label: 'Unmuted' }, 
+						{ id: 'true', label: 'Muted' } 
 					]
 				}
 			]
 		},
+
+// ----------------------------------------------------------------------------------
+// This is for next revision
+// ----------------------------------------------------------------------------------
+		
 		'xover2-set': {
 			label: '[2-Way Crossover] Edit',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -579,13 +457,7 @@ instance.prototype.actions = function(system) {
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -613,13 +485,7 @@ instance.prototype.actions = function(system) {
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -645,17 +511,11 @@ instance.prototype.actions = function(system) {
 			]
 		},
 		'hpfcutoff-set': {
-			label: '[HPF] Set Cutoff',
+			label: '[HPF] set Cutoff',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -668,17 +528,11 @@ instance.prototype.actions = function(system) {
 			]
 		},
 		'hpfbypass-set': {
-			label: '[HPF] Set Bypass',
+			label: '[HPF] set Bypass',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -687,24 +541,18 @@ instance.prototype.actions = function(system) {
 					label: 'State',
 					id: 'value',
 					choices: [ 
-						{ id: '0', label: 'Active' }, 
-						{ id: '1', label: 'Bypassed' } 
+						{ id: 'false', label: 'Active' }, 
+						{ id: 'true', label: 'Bypassed' } 
 					]
 				}
 			]
 		},
 		'lpfcutoff-set': {
-			label: '[LPF] Set Cutoff',
+			label: '[LPF] set Cutoff',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -717,17 +565,11 @@ instance.prototype.actions = function(system) {
 			]
 		},
 		'lpfbypass-set': {
-			label: '[LPF] Set Bypass',
+			label: '[LPF] set Bypass',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -736,24 +578,19 @@ instance.prototype.actions = function(system) {
 					label: 'State',
 					id: 'value',
 					choices: [ 
-						{ id: '0', label: 'Active' }, 
-						{ id: '1', label: 'Bypassed' } 
+						{ id: 'false', label: 'Active' }, 
+						{ id: 'true', label: 'Bypassed' } 
 					]
 				}
 			]
 		},
+		
 		'highshelfcutoff-set': {
-			label: '[High Shelf] Set Cutoff',
+			label: '[High Shelf] set Cutoff',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -766,17 +603,11 @@ instance.prototype.actions = function(system) {
 			]
 		},
 		'highshelfgain-set': {
-			label: '[High Shelf] Set Gain',
+			label: '[High Shelf] set Gain',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -789,17 +620,11 @@ instance.prototype.actions = function(system) {
 			]
 		},
 		'highshelfbypass-set': {
-			label: '[High Shelf] Set Bypass',
+			label: '[High Shelf] set Bypass',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -808,24 +633,18 @@ instance.prototype.actions = function(system) {
 					label: 'State',
 					id: 'value',
 					choices: [ 
-						{ id: '0', label: 'Active' }, 
-						{ id: '1', label: 'Bypassed' } 
+						{ id: 'false', label: 'Active' }, 
+						{ id: 'true', label: 'Bypassed' } 
 					]
 				}
 			]
 		},
 		'lowshelfcutoff-set': {
-			label: '[Low Shelf] Set Cutoff',
+			label: '[Low Shelf] set Cutoff',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -838,17 +657,11 @@ instance.prototype.actions = function(system) {
 			]
 		},
 		'lowshelfgain-set': {
-			label: '[Low Shelf] Set Gain',
+			label: '[Low Shelf] set Gain',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -861,17 +674,11 @@ instance.prototype.actions = function(system) {
 			]
 		},
 		'lowshelfbypass-set': {
-			label: '[Low Shelf] Set Bypass',
+			label: '[Low Shelf] set Bypass',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -880,24 +687,18 @@ instance.prototype.actions = function(system) {
 					label: 'State',
 					id: 'value',
 					choices: [ 
-						{ id: '0', label: 'Active' }, 
-						{ id: '1', label: 'Bypassed' } 
+						{ id: 'false', label: 'Active' }, 
+						{ id: 'true', label: 'Bypassed' } 
 					]
 				}
 			]
 		},
 		'allpassbypass-set': {
-			label: '[All Pass] Set Bypass (All)',
+			label: '[All Pass] set Bypass (All)',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -906,24 +707,18 @@ instance.prototype.actions = function(system) {
 					label: 'State',
 					id: 'value',
 					choices: [ 
-						{ id: '0', label: 'Active' }, 
-						{ id: '1', label: 'Bypassed' } 
+						{ id: 'false', label: 'Active' }, 
+						{ id: 'true', label: 'Bypassed' } 
 					]
 				}
 			]
 		},
 		'allpassbypassband-set': {
-			label: '[All Pass] Set Bypass (Band)',
+			label: '[All Pass] set Bypass (Band)',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -938,24 +733,18 @@ instance.prototype.actions = function(system) {
 					label: 'State',
 					id: 'value',
 					choices: [ 
-						{ id: '0', label: 'Active' }, 
-						{ id: '1', label: 'Bypassed' } 
+						{ id: 'false', label: 'Active' }, 
+						{ id: 'true', label: 'Bypassed' } 
 					]
 				}
 			]
 		},
 		'allpasscenter-set': {
-			label: '[All Pass] Set Center (Band)',
+			label: '[All Pass] set Center (Band)',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -974,17 +763,11 @@ instance.prototype.actions = function(system) {
 			]
 		},
 		'allpassbw-set': {
-			label: '[All Pass] Set Bandwidth (Band)',
+			label: '[All Pass] set Bandwidth (Band)',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -1003,17 +786,11 @@ instance.prototype.actions = function(system) {
 			]
 		},
 		'geqlevel-set': {
-			label: '[GEQ] Set Level (Band)',
+			label: '[GEQ] set Level (Band)',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -1032,17 +809,11 @@ instance.prototype.actions = function(system) {
 			]
 		},
 		'geqbypass-set': {
-			label: '[GEQ] Set Bypass',
+			label: '[GEQ] set Bypass',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -1051,24 +822,18 @@ instance.prototype.actions = function(system) {
 					label: 'State',
 					id: 'value',
 					choices: [ 
-						{ id: '0', label: 'Active' }, 
-						{ id: '1', label: 'Bypassed' } 
+						{ id: 'false', label: 'Active' }, 
+						{ id: 'true', label: 'Bypassed' } 
 					]
 				}
 			]
 		},
 		'peqbypass-set': {
-			label: '[PEQ] Set Bypass (All)',
+			label: '[PEQ] set Bypass (All)',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -1077,24 +842,18 @@ instance.prototype.actions = function(system) {
 					label: 'State',
 					id: 'value',
 					choices: [ 
-						{ id: '0', label: 'Active' }, 
-						{ id: '1', label: 'Bypassed' } 
+						{ id: 'false', label: 'Active' }, 
+						{ id: 'true', label: 'Bypassed' } 
 					]
 				}
 			]
 		},
 		'peqbypassband-set': {
-			label: '[PEQ] Set Bypass (Band)',
+			label: '[PEQ] set Bypass (Band)',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -1109,24 +868,18 @@ instance.prototype.actions = function(system) {
 					label: 'State',
 					id: 'value',
 					choices: [ 
-						{ id: '0', label: 'Active' }, 
-						{ id: '1', label: 'Bypassed' } 
+						{ id: 'false', label: 'Active' }, 
+						{ id: 'true', label: 'Bypassed' } 
 					]
 				}
 			]
 		},
 		'peqcenter-set': {
-			label: '[PEQ] Set Center (Band)',
+			label: '[PEQ] set Center (Band)',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -1145,17 +898,11 @@ instance.prototype.actions = function(system) {
 			]
 		},
 		'peqpassbw-set': {
-			label: '[PEQ] Set Bandwidth (Band)',
+			label: '[PEQ] set Bandwidth (Band)',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -1174,17 +921,11 @@ instance.prototype.actions = function(system) {
 			]
 		},
 		'peqlevel-set': {
-			label: '[PEQ] Set Level (Band)',
+			label: '[PEQ] set Level (Band)',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -1202,18 +943,17 @@ instance.prototype.actions = function(system) {
 				}
 			]
 		},
-		'aingain-set': {
-			label: '[Analog In] Set Gain',
+// ----------------------------------------------------------------------------------
+// Aaaaand were back into things for v1.0
+// ----------------------------------------------------------------------------------
+
+		// Gain set for any analogiue input block that has a gain control
+		'gain-set': {
+			label: '[Input] set Gain',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -1244,18 +984,13 @@ instance.prototype.actions = function(system) {
 				}
 			]
 		},
-		'ainlevel-set': {
-			label: '[Analog In] Set Level',
+		// Level set for any block that has a level control
+		'level-set': {
+			label: '[Level] set Level',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -1273,18 +1008,14 @@ instance.prototype.actions = function(system) {
 				}
 			]
 		},
-		'ainphantom-set': {
-			label: '[Analog In] Set Phantom Power',
+		
+		// Phantom Power set for any analogue input block that can supply phantom power
+		'phantom-set': {
+			label: '[Input] set Phantom Power',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -1299,56 +1030,20 @@ instance.prototype.actions = function(system) {
 					label: 'State',
 					id: 'value',
 					choices: [ 
-						{ id: '0', label: 'Off' }, 
-						{ id: '1', label: 'On' } 
+						{ id: 'false', label: 'Off' }, 
+						{ id: 'true', label: 'On' } 
 					]
 				}
 			]
 		},
-		'ainmute-set': {
-			label: '[Analog In] Set Mute',
+		
+		// Phase Invert / Polarity Invert / Phase Flip - you know the deal - get the phase right on inputs
+		'polarity-set': {
+			label: '[Analog In] set Polarity',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
-					id: 'instance',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Channel',
-					id: 'index1',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'dropdown',
-					label: 'State',
-					id: 'value',
-					choices: [ 
-						{ id: '0', label: 'Unmuted' }, 
-						{ id: '1', label: 'Muted' } 
-					]
-				}
-			]
-		},
-		'ainpolarity-set': {
-			label: '[Analog In] Set Polarity',
-			options: [
-				{
-					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -1363,191 +1058,21 @@ instance.prototype.actions = function(system) {
 					label: 'Polarity',
 					id: 'value',
 					choices: [ 
-						{ id: '0', label: 'Normal' }, 
-						{ id: '1', label: 'Inverted' } 
+						{ id: 'false', label: 'Normal' }, 
+						{ id: 'true', label: 'Inverted' } 
 					]
 				}
 			]
 		},
-		'aecgain-set': {
-			label: '[AEC In] Set Gain',
-			options: [
-				{
-					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
-					id: 'instance',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Channel',
-					id: 'index1',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'dropdown',
-					label: 'Gain',
-					id: 'value',
-					choices: [ 
-						{ id: '0', label: '0 dB' }, 
-						{ id: '6', label: '6 dB' },
-						{ id: '12', label: '12 dB' }, 
-						{ id: '18', label: '18 dB' },
-						{ id: '24', label: '24 dB' }, 
-						{ id: '30', label: '30 dB' },
-						{ id: '36', label: '36 dB' }, 
-						{ id: '42', label: '42 dB' },
-						{ id: '48', label: '48 dB' }, 
-						{ id: '54', label: '54 dB' },
-						{ id: '60', label: '60 dB' }, 
-						{ id: '66', label: '66 dB' }
-					]
-				}
-			]
-		},
-		'aeclevel-set': {
-			label: '[AEC In] Set Level',
-			options: [
-				{
-					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
-					id: 'instance',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Channel',
-					id: 'index1',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Level',
-					id: 'value',
-					regex: self.REGEX_NUMBER
-				}
-			]
-		},
-		'aecphantom-set': {
-			label: '[AEC In] Set Phantom Power',
-			options: [
-				{
-					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
-					id: 'instance',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Chanel',
-					id: 'index1',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'dropdown',
-					label: 'State',
-					id: 'value',
-					choices: [ 
-						{ id: '0', label: 'Off' }, 
-						{ id: '1', label: 'On' } 
-					]
-				}
-			]
-		},
-		'aecmute-set': {
-			label: '[AEC In] Set Mute',
-			options: [
-				{
-					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
-					id: 'instance',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Channel',
-					id: 'index1',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'dropdown',
-					label: 'State',
-					id: 'value',
-					choices: [ 
-						{ id: '0', label: 'Unmuted' }, 
-						{ id: '1', label: 'Muted' } 
-					]
-				}
-			]
-		},
-		'aecpolarity-set': {
-			label: '[AEC In] Set Polarity',
-			options: [
-				{
-					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
-					id: 'instance',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Channel',
-					id: 'index1',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'dropdown',
-					label: 'Polarity',
-					id: 'value',
-					choices: [ 
-						{ id: '0', label: 'Normal' }, 
-						{ id: '1', label: 'Inverted' } 
-					]
-				}
-			]
-		},
+		
+		
+		// Turn AEC on and off
 		'aecenable-set': {
-			label: '[AEC In] Enable AEC',
+			label: '[AEC] Enable AEC',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -1559,27 +1084,53 @@ instance.prototype.actions = function(system) {
 				},
 				{
 					type: 'dropdown',
-					label: 'Polarity',
-					id: 'AEC',
+					label: 'AEC',
+					id: 'value',
 					choices: [ 
-						{ id: '0', label: 'Off' }, 
-						{ id: '1', label: 'On' } 
+						{ id: 'false', label: 'Off' }, 
+						{ id: 'true', label: 'On' }
 					]
 				}
 			]
 		},
+		
+		// AEC Set Non-linear Processing stregnth
 		'aecnlp-set': {
-			label: '[AEC In] NLP Strength',
+			label: '[AEC] NLP Strength',
 			options: [
 				{
 					type: 'textinput',
-					label: 'Device ID',
-					id: 'device',
+					label: 'Instance Tag',
+					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
 				{
 					type: 'textinput',
-					label: 'Instance ID',
+					label: 'Channel',
+					id: 'index1',
+					regex: self.REGEX_NUMBER
+				},
+				{
+					type: 'dropdown',
+					label: 'NLP Mode',
+					id: 'value',
+					choices: [ 
+						{ id: 'NLPMODE_NONE', label: 'None' }, 
+						{ id: 'NLPMODE_LOW', label: 'Low' } 
+						{ id: 'NLPMODE_MEDIUM', label: 'Medium' } 
+						{ id: 'NLPMODE_HIGH', label: 'High' } 
+					]
+				}
+			]
+		},
+
+		// AEC Set Noise Reduction Stregnth
+		'aecnr-set': {
+			label: '[AEC] Noise Reduction Strength',
+			options: [
+				{
+					type: 'textinput',
+					label: 'Instance Tag',
 					id: 'instance',
 					regex: self.REGEX_NUMBER
 				},
@@ -1594,291 +1145,285 @@ instance.prototype.actions = function(system) {
 					label: 'Strength',
 					id: 'AEC',
 					choices: [ 
-						{ id: '0', label: 'Off' }, 
-						{ id: '1', label: 'Soft' },
-						{ id: '2', label: 'Medium' }, 
-						{ id: '3', label: 'Aggressove' } 
+						{ id: 'OFF', label: 'None' }, 
+						{ id: 'LOW', label: 'Low' } 
+						{ id: 'MED', label: 'Medium' } 
+						{ id: 'HIGH', label: 'High' } 
 					]
 				}
 			]
-		}
+		}		
+		
 	})
 }
 
+
+// These are the functions that define the first part of the final command
 instance.prototype.action = function(action) {
 	var self = this
 	var opt = action.options
 
 	switch (action.action) {
 		case 'recall':
-			opt.action = 'RECALL'
-			opt.device = '0'
-			opt.attribute = 'PRESET'
+			opt.action = 'recallPreset'
+			opt.attribute = 'recallPreset'
 			break
 		
 		case 'fader-step':
-			opt.attribute = 'FDRLVL'
+			opt.attribute = 'level'
 			break
 		
 		case 'fader-set':
-			opt.action = 'SET'
-			opt.attribute = 'FDRLVL'
+			opt.action = 'set'
+			opt.attribute = 'level'
 			break
 		
 		case 'mutebutton-set':
-			opt.action = 'SET'
-			opt.attribute = 'MBMUTE'
+			opt.action = 'set'
+			opt.attribute = 'mute'
 			break
 
 		case 'fadermute-set':
-			opt.action = 'SET'
-			opt.attribute = 'FDRMUTE'
+			opt.action = 'set'
+			opt.attribute = 'mute'
 			break
 
 		case 'router-set':
-			opt.action = 'SET'
-			opt.attribute = 'RTRMUTEXP'
+			opt.action = 'set'
+			opt.attribute = 'input'
 			break
 
 		case 'source-set':
-			opt.action = 'SET'
-			opt.attribute = 'SRCSELSRC'
+			opt.action = 'set'
+			opt.attribute = 'sourceSelection'
 			break
 
 		case 'sourcevolume-set':
-			opt.action = 'SET'
-			opt.attribute = 'SRCSELLVL'
+			opt.action = 'set'
+			opt.attribute = 'sourceLevel'
 			break
 
 		case 'leveler-set':
-			opt.action = 'SET'
-			opt.attribute = 'LVLRBYP'
+			opt.action = 'set'
+			opt.attribute = 'bypass'
 			break
 
 		case 'comp-set':
-			opt.action = 'SET'
-			opt.attribute = 'CLIMBYP'
+			opt.action = 'set'
+			opt.attribute = 'bypass'
 			break
 
 		case 'noise-set':
-			opt.action = 'SET'
-			opt.attribute = 'NGBYP'
+			opt.action = 'set'
+			opt.attribute = 'bypass'
 			break
 
-		case 'duckerinputlevel-set':
-			opt.action = 'SET'
-			opt.attribute = 'DKRLVLIN'
+		case 'inputlevel-set':
+			opt.action = 'set'
+			opt.attribute = 'inputLevel'
 			break
 
 		case 'duckerlevelsense-set':
-			opt.action = 'SET'
-			opt.attribute = 'DKRLVLSENSE'
-			break
-
-		case 'duckerbypass-set':
-			opt.action = 'SET'
-			opt.attribute = 'DKRBYP'
+			opt.action = 'set'
+			opt.attribute = 'senseLevel'
 			break
 
 		case 'duckersensemute-set':
-			opt.action = 'SET'
-			opt.attribute = 'DKRMUTESENSE'
+			opt.action = 'set'
+			opt.attribute = 'senseMute'
 			break
 
-		case 'duckerinputmute-set':
-			opt.action = 'SET'
-			opt.attribute = 'DKRMUTEIN'
+		case 'inputmute-set':
+			opt.action = 'set'
+			opt.attribute = 'inputMute'
 			break
+// ---------------------------------------------------------
+// Stuff for a future revision
+// ---------------------------------------------------------
 
 		case 'xover2-set':
-			opt.action = 'SET'
+			opt.action = 'set'
 			opt.attribute = 'XOVER2FC'
 			break
 
 		case 'xover3-set':
-			opt.action = 'SET'
+			opt.action = 'set'
 			opt.attribute = 'XOVER3FC'
 			break
 
 		case 'xover4-set':
-			opt.action = 'SET'
+			opt.action = 'set'
 			opt.attribute = 'XOVER4FC'
 			break
 
 		case 'hpfcutoff-set':
-			opt.action = 'SET'
+			opt.action = 'set'
 			opt.attribute = 'HPFLTFC'
 			break
 
 		case 'hpfbypass-set':
-			opt.action = 'SET'
+			opt.action = 'set'
 			opt.attribute = 'HPFLTBYP'
 			break
 
 		case 'lpfcutoff-set':
-			opt.action = 'SET'
+			opt.action = 'set'
 			opt.attribute = 'LPFLTFC'
 			break
 
 		case 'lpfbypass-set':
-			opt.action = 'SET'
+			opt.action = 'set'
 			opt.attribute = 'LPFLTBYP'
 			break
 
 		case 'highshelfcutoff-set':
-			opt.action = 'SET'
+			opt.action = 'set'
 			opt.attribute = 'HSFLTFC'
 			break
 			
 		case 'highshelfgain-set':
-			opt.action = 'SET'
+			opt.action = 'set'
 			opt.attribute = 'HSFLTGAIN'
 			break
 			
 		case 'highshelfbypass-set':
-			opt.action = 'SET'
+			opt.action = 'set'
 			opt.attribute = 'HSFLTBYP'
 			break
 
 		case 'lowshelfcutoff-set':
-			opt.action = 'SET'
+			opt.action = 'set'
 			opt.attribute = 'LSFLTFC'
 			break
 			
 		case 'lowshelfgain-set':
-			opt.action = 'SET'
+			opt.action = 'set'
 			opt.attribute = 'LSFLTGAIN'
 			break
 			
 		case 'lowshelfbypass-set':
-			opt.action = 'SET'
+			opt.action = 'set'
 			opt.attribute = 'LSFLTBYP'
 			break
 
 		case 'allpassbypass-set':
-			opt.action = 'SET'
+			opt.action = 'set'
 			opt.attribute = 'APFLBYPALL'
 			break
 
 		case 'allpassbypassband-set':
-			opt.action = 'SET'
+			opt.action = 'set'
 			opt.attribute = 'APFLTBYPBND'
 			break
 
 		case 'allpasscenter-set':
-			opt.action = 'SET'
+			opt.action = 'set'
 			opt.attribute = 'APFLBYPBND'
 			break
 
 		case 'allpassbw-set':
-			opt.action = 'SET'
+			opt.action = 'set'
 			opt.attribute = 'APFLTBWBND'
 			break
 
 		case 'geqlevel-set':
-			opt.action = 'SET'
+			opt.action = 'set'
 			opt.attribute = 'GEQLVLBND'
 			break
 
 		case 'geqbypass-set':
-			opt.action = 'SET'
+			opt.action = 'set'
 			opt.attribute = 'GEQBYPALL'
 			break
 		
 		case 'peqbypass-set':
-			opt.action = 'SET'
+			opt.action = 'set'
 			opt.attribute = 'PEQBYPALL'
 			break
 
 		case 'peqbypassband-set':
-			opt.action = 'SET'
+			opt.action = 'set'
 			opt.attribute = 'PEQBYPBND'
 			break
 
 		case 'peqcenter-set':
-			opt.action = 'SET'
+			opt.action = 'set'
 			opt.attribute = 'PEQFCBND'
 			break
 
 		case 'peqbw-set':
-			opt.action = 'SET'
+			opt.action = 'set'
 			opt.attribute = 'PEQBWBND'
 			break
 
 		case 'peqlevel-set':
-			opt.action = 'SET'
+			opt.action = 'set'
 			opt.attribute = 'PEQLVLBND'
 			break
+			
+// ---------------------------------------------------------
+// And we're back to stuff for current revision
+// ---------------------------------------------------------
 
-		case 'aingain-set':
-			opt.action = 'SET'
-			opt.attribute = 'MICGAIN'
+		case 'gain-set':
+			opt.action = 'set'
+			opt.attribute = 'gain'
 			break
 
-		case 'ainlevel-set':
-			opt.action = 'SET'
-			opt.attribute = 'INPLVL'
+		case 'level-set':
+			opt.action = 'set'
+			opt.attribute = 'level'
 			break
 
-		case 'ainphantom-set':
-			opt.action = 'SET'
-			opt.attribute = 'PHPWR'
+		case 'phantom-set':
+			opt.action = 'set'
+			opt.attribute = 'phantomPower'
 			break
 
-		case 'ainmute-set':
-			opt.action = 'SET'
-			opt.attribute = 'INPMUTE'
-			break
-
-		case 'ainpolarity-set':
-			opt.action = 'SET'
-			opt.attribute = 'INPINVRT'
-		break
-
-		case 'aecgain-set':
-			opt.action = 'SET'
-			opt.attribute = 'AECMICGAIN'
-			break
-
-		case 'aeclevel-set':
-			opt.action = 'SET'
-			opt.attribute = 'AECINPLVL'
-			break
-
-		case 'aecphantom-set':
-			opt.action = 'SET'
-			opt.attribute = 'AECPHPWR'
-			break
-
-		case 'aecmute-set':
-			opt.action = 'SET'
-			opt.attribute = 'AECINPMUTE'
-			break
-
-		case 'aecpolarity-set':
-			opt.action = 'SET'
-			opt.attribute = 'AECINPINVRT'
+		case 'polarity-set':
+			opt.action = 'set'
+			opt.attribute = 'invert'
 		break
 
 		case 'aecenable-set':
-			opt.action = 'SET'
-			opt.attribute = 'AECENABLE'
+			opt.action = 'set'
+			opt.attribute = 'aecEnable'
 			break
 
 		case 'aecnlp-set':
-			opt.action = 'SET'
-			opt.attribute = 'AECNLP'
+			opt.action = 'set'
+			opt.attribute = 'nlpMode'
+		break
+		
+		case 'aecnr-set':
+			opt.action = 'set'
+			opt.attribute = 'nlpMode'
 		break
 
 	}
 
 
-
+// ---------------------------------------------------------------------------------------------
+// OLD AUDIA
+// 	   cmd = opt.action opt.device opt.attribute opt.instance opt.index1 opt.index2 opt.value
+// eg  cmd = set 0 MBMUTE 99 1 1
+//
+//		action = get/set/etc
+//		device = deviceid (not needed for tesira)
+//		attribute = MBMUTE SETLEVEL etc
+//		instance = insatance ID of block
+//		opt.index1 = what channel you want to controllers
+//		opt.index2 = 2nd index to controllers (used for things like routers)
+//		opt.value = what the value is
+//
+// NEW TESIRA
+//		https://support.biamp.com/Tesira/Control/Tesira_command_string_calculator
+//		instance(ID or name) action attribute index1 (index2) Value
+//		cmd = `${opt.instance} ${opt.action} ${opt.attribute}`
+//
+// ---------------------------------------------------------------------------------------------
 	if (opt.action && opt.device && opt.attribute) {
-		let cmd = `${opt.action} ${opt.device} ${opt.attribute}`
-		if (opt.instance) {
-			cmd = cmd + ' ' + opt.instance
-		}	 
+		let cmd = `${opt.instance} ${opt.action} ${opt.attribute}`
 		if (opt.index1) {
 			cmd = cmd + ' ' + opt.index1
 		}
@@ -1902,3 +1447,4 @@ instance.prototype.action = function(action) {
 
 instance_skel.extendedBy(instance)
 exports = module.exports = instance
+  
